@@ -16,7 +16,7 @@ subtest "should write valid JSON to file" => sub  {
 
     ok( $log=Log::Any->get_logger());
 
-    # ok( $log->warn('This was logged to STDERR'), "Will Log warn" );
+    ok( $log->warn('This was logged to STDERR'), "Will Log warn" );
    my ($stderr) = capture_stderr( sub {
 
     set_fixed_time(1612403081.70045);
@@ -33,7 +33,7 @@ subtest "should write valid JSON to file" => sub  {
     is($error_data->{pid}, $$);
     is($error_data->{stack}->[6]->{method},'Test::More::subtest'); 
     is($error_data->{stack}->[6]->{file},$0); 
-    use Data::Dumper::Concise;
-    warn Dumper($error_data->{stack});
     
 };
+
+
