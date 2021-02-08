@@ -12,14 +12,11 @@ use File::Temp qw(tempdir);
 plan tests => 2;
 require Log::Any::Adapter;
 
-my $tempdir = tempdir( 'name-XXXX', TMPDIR => 1, CLEANUP => 1 );
-my $file = "$tempdir/temp.log";
 
 subtest "Should write valid JSON to STDERR" => sub  {
     Log::Any::Adapter->set( 'JSON',log_level => 'info' );
-    my $log;
 
-    ok( $log=Log::Any->get_logger());
+    ok(my $log=Log::Any->get_logger());
 
     ok( $log->warn('This was logged to STDERR'), "Will Log warn" );
    my ($stderr) = capture_stderr( sub {
@@ -28,8 +25,7 @@ subtest "Should write valid JSON to STDERR" => sub  {
     ok( $log->warn('This was logged to STDERR'), "Will Log warn" );
     });
     
-    my $error_data;
-    ok($error_data = decode_json_utf8($stderr));
+    ok(my $error_data = decode_json_utf8($stderr));
     
     is($error_data->{message}, 'This was logged to STDERR');
     is($error_data->{severity}, 'warn');
@@ -48,13 +44,12 @@ subtest "Should write valid JSON to file" => sub {
   my $tempdir = tempdir( 'name-XXXX', TMPDIR => 1, CLEANUP => 1 );
     my $file = "$tempdir/temp.log";
     Log::Any::Adapter->set( 'JSON',file => $file, log_level => 'info' );
-    my $log;
 
-    ok( $log=Log::Any->get_logger());
+    ok(my $log=Log::Any->get_logger());
     $log->warn("to file");
     my $log_string = read_file($file);
     ok(my $error_data = decode_json_utf8($log_string));
-    is( $error_data->{message},'to files', "debug not logged to file" );
+    is( $error_data->{message},'to file', "Correct Message Logged to file" );
 }
 
 

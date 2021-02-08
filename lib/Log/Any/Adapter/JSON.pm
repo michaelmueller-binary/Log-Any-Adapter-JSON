@@ -55,12 +55,12 @@ sub log {
         stack => $stack,
     };
     my $json_string = encode_json_utf8($logstructure);
-    if (!$self->{file}) {
-        print STDERR $json_string;
-    } else {
+    if ($self->{file}) {
         flock($self->{fh}, LOCK_EX) if $HAS_FLOCK;
         $self->{fh}->print($json_string);
         flock($self->{fh}, LOCK_UN) if $HAS_FLOCK;
+    } else {
+        print STDERR $json_string;
     }
 }
 
