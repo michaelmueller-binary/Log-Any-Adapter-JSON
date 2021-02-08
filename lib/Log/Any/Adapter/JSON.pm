@@ -5,13 +5,16 @@ use Log::Any::Adapter::Util qw();
 use Log::Dispatch;
 use strict;
 use warnings;
-use base qw(Log::Any::Adapter::Base);
 use JSON::MaybeUTF8 qw(:v1);
 use Sys::Hostname;
 use Time::HiRes;
+use Config;
+use Fcntl qw/:flock/;
+use base qw(Log::Any::Adapter::Base);
 my $host = Sys::Hostname::hostname();
 my $trace_level = Log::Any::Adapter::Util::numeric_level('trace');
-
+my $HAS_FLOCK = $Config{d_flock} || $Config{d_fcntl_can_lock} || $Config{d_lockf};
+ 
 
 sub init {
     my $self = shift;
@@ -26,6 +29,15 @@ sub init {
     if ( !defined $self->{log_level} ) {
         $self->{log_level} = $trace_level;
     }
+     my $file = $self->{file};
+     $DB::single=1;
+     if ($file) {
+         my $binmode = $self->{binmode} || ':utf8';
+         $binmode = ":$binmode" unless substr($binmode,0,1) eq ':';
+         open( $self->{fh}, ">>$binmode", $file )
+             or die "cannot open '$file' for append: $!";
+         $self->{fh}->autoflush(1);
+     }
 }
 
 
@@ -42,8 +54,14 @@ sub log {
         pid => $$,
         stack => $stack,
     };
-
-    print STDERR encode_json_utf8($logstructure)
+    my $json_string = encode_json_utf8($logstructure);
+    if (!$self->{file}) {
+        print STDERR $json_string;
+    } else {
+        flock($self->{fh}, LOCK_EX) if $HAS_FLOCK;
+        $self->{fh}->print($json_string);
+        flock($self->{fh}, LOCK_UN) if $HAS_FLOCK;
+    }
 }
 
 foreach my $method ( Log::Any::Adapter::Util::logging_methods() ) {

@@ -8,9 +8,14 @@ use Capture::Tiny ':all';
 use JSON::MaybeUTF8 qw(:v1);
 use Sys::Hostname;
 use Test::MockTime::HiRes qw( set_fixed_time );
-plan tests => 1;
+use File::Temp qw(tempdir);
+plan tests => 2;
 require Log::Any::Adapter;
-subtest "should write valid JSON to file" => sub  {
+
+my $tempdir = tempdir( 'name-XXXX', TMPDIR => 1, CLEANUP => 1 );
+my $file = "$tempdir/temp.log";
+
+subtest "Should write valid JSON to STDERR" => sub  {
     Log::Any::Adapter->set( 'JSON',log_level => 'info' );
     my $log;
 
@@ -31,9 +36,25 @@ subtest "should write valid JSON to file" => sub  {
     is($error_data->{host},  Sys::Hostname::hostname());
     is($error_data->{epoch}, 1612403081.70045);
     is($error_data->{pid}, $$);
-    is($error_data->{stack}->[6]->{method},'Test::More::subtest'); 
-    is($error_data->{stack}->[6]->{file},$0); 
+    my $stack = $error_data->{stack};
+    my $array_length = scalar(@$stack);
+    my $last_entry = $array_length-1;
+    is($error_data->{stack}->[$last_entry]->{method},'Test::More::subtest'); 
+    is($error_data->{stack}->[$last_entry]->{file},$0); 
     
 };
+
+subtest "Should write valid JSON to file" => sub {
+  my $tempdir = tempdir( 'name-XXXX', TMPDIR => 1, CLEANUP => 1 );
+    my $file = "$tempdir/temp.log";
+    Log::Any::Adapter->set( 'JSON',file => $file, log_level => 'info' );
+    my $log;
+
+    ok( $log=Log::Any->get_logger());
+    $log->warn("to file");
+    my $log_string = read_file($file);
+    ok(my $error_data = decode_json_utf8($log_string));
+    is( $error_data->{message},'to files', "debug not logged to file" );
+}
 
 
