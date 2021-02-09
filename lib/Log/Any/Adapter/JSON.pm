@@ -11,86 +11,83 @@ use Time::HiRes;
 use Config;
 use Fcntl qw/:flock/;
 use base qw(Log::Any::Adapter::Base);
-my $host = Sys::Hostname::hostname();
+my $host        = Sys::Hostname::hostname();
 my $trace_level = Log::Any::Adapter::Util::numeric_level('trace');
-my $HAS_FLOCK = $Config{d_flock} || $Config{d_fcntl_can_lock} || $Config{d_lockf};
- 
+my $HAS_FLOCK   = $Config{d_flock} || $Config{d_fcntl_can_lock} || $Config{d_lockf};
 
 sub init {
     my $self = shift;
-    if (!$self->{file}){ die "Must supply file attribute"}
-    if ( exists $self->{log_level} && $self->{log_level} =~ /\D/ ) {
-        my $numeric_level = Log::Any::Adapter::Util::numeric_level( $self->{log_level} );
-        if ( !defined($numeric_level) ) {
+    if (!$self->{file}) { die "Must supply file attribute" }
+    if (exists $self->{log_level} && $self->{log_level} =~ /\D/) {
+        my $numeric_level = Log::Any::Adapter::Util::numeric_level($self->{log_level});
+        if (!defined($numeric_level)) {
             require Carp;
-            Carp::carp( sprintf 'Invalid log level "%s". Defaulting to "%s"', $self->{log_level}, 'trace' );
+            Carp::carp(sprintf 'Invalid log level "%s". Defaulting to "%s"', $self->{log_level}, 'trace');
         }
         $self->{log_level} = $numeric_level;
     }
-    if ( !defined $self->{log_level} ) {
+    if (!defined $self->{log_level}) {
         $self->{log_level} = $trace_level;
     }
-     my $file = $self->{file};
+    my $file = $self->{file};
 
-     unless ($file eq 'STDERR') {
-         my $binmode = $self->{binmode} || ':utf8';
-         $binmode = ":$binmode" unless substr($binmode,0,1) eq ':';
-         open( $self->{fh}, ">>$binmode", $file )
-             or die "cannot open '$file' for append: $!";
-         $self->{fh}->autoflush(1);
-     }
+    unless ($file eq 'STDERR') {
+        my $binmode = $self->{binmode} || ':utf8';
+        $binmode = ":$binmode" unless substr($binmode, 0, 1) eq ':';
+        open($self->{fh}, ">>$binmode", $file)
+            or die "cannot open '$file' for append: $!";
+        $self->{fh}->autoflush(1);
+    }
 }
 
-
-
 sub log {
-    my ($self,$log_message) = @_;
+    my ($self, $log_message) = @_;
 
-    my $stack =  $self->stack_build();
+    my $stack        = $self->stack_build();
     my $logstructure = {
-        severity=> 'warn',
-        message => $log_message,
-        host => $host,
-        epoch => Time::HiRes::time(),
-        pid => $$,
-        stack => $stack,
+        severity => 'warn',
+        message  => $log_message,
+        host     => $host,
+        epoch    => Time::HiRes::time(),
+        pid      => $$,
+        stack    => $stack,
     };
     my $json_string = encode_json_utf8($logstructure);
     if ($self->{file} eq 'STDERR') {
         print STDERR $json_string;
     } else {
         flock($self->{fh}, LOCK_EX) if $HAS_FLOCK;
-        $self->{fh}->print($json_string."\n");
+        $self->{fh}->print($json_string . "\n");
         flock($self->{fh}, LOCK_UN) if $HAS_FLOCK;
     }
 }
 
-foreach my $method ( Log::Any::Adapter::Util::logging_methods() ) {
+foreach my $method (Log::Any::Adapter::Util::logging_methods()) {
     no strict 'refs';
-    my $method_level = Log::Any::Adapter::Util::numeric_level( $method );
-    *{$method} = sub {$_[0]->log($_[1])}
+    my $method_level = Log::Any::Adapter::Util::numeric_level($method);
+    *{$method} = sub { $_[0]->log($_[1]) }
 }
 
 sub stack_build {
 
     my $depth = 3;
     my @stack;
-    while(my @caller = caller($depth)) {
+    while (my @caller = caller($depth)) {
         my %frame;
         @frame{qw(package file line method)} = @caller;
         push @stack, \%frame;
     } continue {
         ++$depth;
-    } 
+    }
     return (\@stack);
 }
 
-foreach my $method ( Log::Any::Adapter::Util::detection_methods() ) {
+foreach my $method (Log::Any::Adapter::Util::detection_methods()) {
     no strict 'refs';
-    my $base = substr($method,3);
-    my $method_level = Log::Any::Adapter::Util::numeric_level( $base );
+    my $base         = substr($method, 3);
+    my $method_level = Log::Any::Adapter::Util::numeric_level($base);
     *{$method} = sub {
-        return !!(  $method_level <= $_[0]->{log_level} );
+        return !!($method_level <= $_[0]->{log_level});
     };
 }
 
