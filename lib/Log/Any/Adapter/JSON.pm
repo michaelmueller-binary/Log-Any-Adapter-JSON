@@ -18,6 +18,7 @@ my $HAS_FLOCK = $Config{d_flock} || $Config{d_fcntl_can_lock} || $Config{d_lockf
 
 sub init {
     my $self = shift;
+    if (!$self->{file}){ die "Must supply file attribute"}
     if ( exists $self->{log_level} && $self->{log_level} =~ /\D/ ) {
         my $numeric_level = Log::Any::Adapter::Util::numeric_level( $self->{log_level} );
         if ( !defined($numeric_level) ) {
@@ -30,8 +31,8 @@ sub init {
         $self->{log_level} = $trace_level;
     }
      my $file = $self->{file};
-     $DB::single=1;
-     if ($file) {
+
+     unless ($file eq 'STDERR') {
          my $binmode = $self->{binmode} || ':utf8';
          $binmode = ":$binmode" unless substr($binmode,0,1) eq ':';
          open( $self->{fh}, ">>$binmode", $file )
@@ -55,12 +56,12 @@ sub log {
         stack => $stack,
     };
     my $json_string = encode_json_utf8($logstructure);
-    if ($self->{file}) {
-        flock($self->{fh}, LOCK_EX) if $HAS_FLOCK;
-        $self->{fh}->print($json_string);
-        flock($self->{fh}, LOCK_UN) if $HAS_FLOCK;
-    } else {
+    if ($self->{file} eq 'STDERR') {
         print STDERR $json_string;
+    } else {
+        flock($self->{fh}, LOCK_EX) if $HAS_FLOCK;
+        $self->{fh}->print($json_string."\n");
+        flock($self->{fh}, LOCK_UN) if $HAS_FLOCK;
     }
 }
 
