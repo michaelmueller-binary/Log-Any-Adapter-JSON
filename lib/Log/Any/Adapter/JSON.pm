@@ -1,6 +1,51 @@
 package Log::Any::Adapter::JSON;
 our $VERSION = '0.01';
 
+
+=head1 NAME
+
+Log::Any::Adapter::JSON - Outputs log messages as part of a JSON  structure that contains related metadata
+
+=head1 SYNOPSIS
+
+    use Log::Any::Adapter qw(JSON),file=>'/tmp/something.log', log_level=>'info';
+
+
+=head1 DESCRIPTION
+
+A L<Log::Any> adpater to output log messages to C<STDERR> or a file  as a json string.  
+The JSON string is an object with the follwoing fields
+   
+=over 4 
+
+=item message : The message as a string being logged. 
+
+=item epoch :  Epoch of when the message was logged to  thousands of a second eg: 1612843069.3598.
+
+=item severity: The string value of the severity as defined by Log::Any
+
+=item host:  The host name of the platform running the code.  
+
+=item stack:  An array of objects each with details of the caller stack.  
+
+=over 4
+
+=item line:  Line number of the call. 
+
+=item method: Method name of the call.
+
+=item  file: Name of the file the method was in. 
+
+=item package:  package name containg  method. 
+
+=back
+
+=back
+
+=cut
+
+
+
 use Log::Any::Adapter::Util qw();
 use Log::Dispatch;
 use strict;
